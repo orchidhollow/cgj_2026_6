@@ -2,7 +2,14 @@ using UnityEngine;
 
 /// <summary>
 /// 抓钩锚点：鼠标点击方向发射，命中物体后拉动角色飞向锚点
-/// 通过 EventCenter 广播事件
+///
+/// 生命周期：
+/// 1. Init() 初始化，朝鼠标方向飞行
+/// 2. 飞行中累计距离，超过 maxDistance 未命中 → 原路返回 → 消失
+/// 3. 命中物体 → 停下，成为子物体，拉动角色
+/// 4. 角色到达 → 消失
+///
+/// 通过 EventCenter 广播 E_AnchorFired / E_AnchorHit / E_AnchorArrived 事件
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(CircleCollider2D))]
@@ -11,11 +18,11 @@ public class Anchor : MonoBehaviour
     [Header("Settings")]
     /// <summary>飞行速度</summary>
     public float speed = 20f;
-    /// <summary>拉动角色的速度</summary>
+    /// <summary>拉动角色的速度（MoveTowards 每秒移动距离）</summary>
     public float pullSpeed = 15f;
     /// <summary>到达判定距离（与角色距离小于此值时回收）</summary>
     public float arriveDistance = 0.5f;
-    /// <summary>最大飞行距离（超过则自动回收）</summary>
+    /// <summary>最大飞行距离（超过则原路返回）</summary>
     public float maxDistance = 20f;
 
     private Rigidbody2D rb;
@@ -23,11 +30,15 @@ public class Anchor : MonoBehaviour
     private Player owner;
     /// <summary>是否已命中物体</summary>
     private bool hasHit;
+    /// <summary>命中的物体（手动跟随，避免 SetParent 导致畸变）</summary>
+    private Transform hitTarget;
+    /// <summary>命中时相对物体的偏移量</summary>
+    private Vector2 hitOffset;
     /// <summary>是否正在返回（未命中到达最大距离后）</summary>
     private bool isReturning;
-    /// <summary>已飞行距离</summary>
+    /// <summary>已飞行距离（用于判断是否超过 maxDistance）</summary>
     private float traveledDistance;
-    /// <summary>上一帧位置（用于计算飞行距离）</summary>
+    /// <summary>上一帧位置（用于计算每帧飞行距离）</summary>
     private Vector2 lastPosition;
 
     void Awake()
@@ -37,6 +48,7 @@ public class Anchor : MonoBehaviour
 
     /// <summary>
     /// 初始化锚点（由 Player.FireAnchor 调用）
+    /// 重置所有状态，设置飞行方向和速度
     /// </summary>
     /// <param name="player">发射者</param>
     /// <param name="direction">发射方向（鼠标指向）</param>
@@ -56,23 +68,28 @@ public class Anchor : MonoBehaviour
     }
 
     /// <summary>
-    /// 碰撞检测：命中任何非玩家物体后停下
+    /// 碰撞检测：命中任何非玩家、非星球、非 Trigger 物体后停下
+    /// 成为碰撞物体的子物体，通知 Player 切换到 BeingPulled 状态
     /// </summary>
     void OnTriggerEnter2D(Collider2D other)
     {
         if (hasHit || rb == null) return;
-        // 忽略 tag 为 Player 的物体
-        if (other.CompareTag("Player")||other.CompareTag("Planet")) return;
+        // 忽略 tag 为 Player 和 Planet 的物体
+        if (other.CompareTag("Player") || other.CompareTag("Planet")) return;
+        // 忽略 Trigger 碰撞体（如星球重力范围）
+        if (other.isTrigger) return;
 
         hasHit = true;
         rb.velocity = Vector2.zero;
         rb.isKinematic = true;
-        // 命中后暂停角色常规移动
-        if (owner != null)
-            owner.isBeingPulled = true;
 
-        // 成为碰撞物体的子物体，跟随移动
-        transform.SetParent(other.transform);
+        // 记录命中物体和偏移量（手动跟随，避免 SetParent 导致畸变）
+        hitTarget = other.transform;
+        hitOffset = (Vector2)transform.position - (Vector2)hitTarget.position;
+
+        // 通知 Player 切换到 BeingPulled 状态
+        if (owner != null)
+            owner.OnAnchorHit();
 
         // 广播命中事件
         EventCenter.Instance.EventTrigger(E_EventType.E_AnchorHit, this);
@@ -82,7 +99,7 @@ public class Anchor : MonoBehaviour
     {
         if (owner == null) return;
 
-        // 正在返回：朝角色飞去，到达后消失
+        // ===== 返回模式：朝角色飞去，到达后消失 =====
         if (isReturning)
         {
             Vector2 returnDir = ((Vector2)owner.transform.position - (Vector2)transform.position).normalized;
@@ -96,7 +113,7 @@ public class Anchor : MonoBehaviour
             return;
         }
 
-        // 未命中时累计飞行距离
+        // ===== 飞行模式：累计距离，超过 maxDistance 则返回 =====
         if (!hasHit)
         {
             traveledDistance += Vector2.Distance(transform.position, lastPosition);
@@ -110,10 +127,14 @@ public class Anchor : MonoBehaviour
             }
         }
 
-        // 未命中，跳过拉动逻辑
+        // ===== 命中模式：拉动角色向锚点移动 =====
         if (!hasHit) return;
 
-        // 直接将角色位置向锚点移动
+        // 手动跟随命中物体（保持偏移量，不受父物体 scale/rotation 影响）
+        if (hitTarget != null)
+            transform.position = (Vector2)hitTarget.position + hitOffset;
+
+        // 直接将角色位置向锚点移动（匀速，不受重力影响）
         Vector2 newPos = Vector2.MoveTowards(
             owner.transform.position,
             transform.position,
@@ -125,26 +146,32 @@ public class Anchor : MonoBehaviour
         float dist = Vector2.Distance(transform.position, owner.transform.position);
         if (dist < arriveDistance)
         {
+            if (owner != null) owner.OnAnchorArrived();
             EventCenter.Instance.EventTrigger(E_EventType.E_AnchorArrived, this);
             Recycle();
         }
     }
 
     /// <summary>
-    /// 回收锚点（隐藏物体，不销毁）
+    /// 回收锚点：隐藏物体，重置状态，通知 Player
+    /// 不销毁物体，可由 Player 复用
     /// </summary>
     public void Recycle()
     {
-        // 恢复角色常规移动
+        // 通知 Player：允许再次发射 + 恢复状态
         if (owner != null)
-            owner.isBeingPulled = false;
+        {
+            owner.OnAnchorRecycled();
+            owner.OnAnchorReturned();
+        }
 
+        // 重置所有状态
         hasHit = false;
         isReturning = false;
+        hitTarget = null;
         rb.velocity = Vector2.zero;
         rb.isKinematic = false;
         owner = null;
-        transform.SetParent(null);
         gameObject.SetActive(false);
     }
 }

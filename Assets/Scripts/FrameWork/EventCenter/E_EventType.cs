@@ -19,4 +19,11 @@ public enum E_EventType
     E_AnchorHit,
     /// <summary>Anchor 到达回收（参数: Anchor）</summary>
     E_AnchorArrived,
+
+    /// <summary>玩家状态变化（参数: Player）</summary>
+    E_PlayerStateChanged,
+    /// <summary>玩家受击（参数: Player）</summary>
+    E_PlayerHit,
+    /// <summary>玩家死亡（参数: Player）</summary>
+    E_PlayerDeath,
 }
