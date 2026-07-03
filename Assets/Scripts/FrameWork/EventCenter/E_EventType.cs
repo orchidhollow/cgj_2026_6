@@ -12,4 +12,11 @@ public enum E_EventType
 
     /// <summary>回合结束</summary>
     E_RoundFinished,
+
+    /// <summary>Anchor 发射（参数: Anchor）</summary>
+    E_AnchorFired,
+    /// <summary>Anchor 命中物体（参数: Anchor）</summary>
+    E_AnchorHit,
+    /// <summary>Anchor 到达回收（参数: Anchor）</summary>
+    E_AnchorArrived,
 }
