@@ -2,10 +2,10 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class GravityAssets : MonoBehaviour
+public class PlanetAssets : MonoBehaviour
 {
     // Start is called before the first frame update
-    [Header("Gravity Assets")]
+    [Header("Planet Assets")]
     [SerializeField] private float gravityScale = 10.0f;
     public float GravityScale => gravityScale;
    public Vector2 GetGravityDirection(Vector2 objectPosition)
