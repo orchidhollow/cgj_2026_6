@@ -81,7 +81,7 @@ public class Planet : MonoBehaviour
             other.transform.SetParent(transform, true);
             // 根据星球名称切换摄像机
             if (LevelManager.Instance != null)
-                LevelManager.Instance.SwitchCameraByPlanet(gameObject.name);
+                LevelManager.Instance.SwitchToWideCamera(gameObject.name);
         }
     }
 
@@ -92,6 +92,8 @@ public class Planet : MonoBehaviour
     /// </summary>
     void OnTriggerExit2D(Collider2D other)
     {
+        if(LevelManager.Instance!=null)
+            LevelManager.Instance.SwitchToPlayerCamera();
         // 离开时不清空重力，不做任何改变
     }
 }

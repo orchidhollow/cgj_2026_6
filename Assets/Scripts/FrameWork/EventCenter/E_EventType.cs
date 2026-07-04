@@ -5,6 +5,9 @@
 public enum E_EventType
 {
     /// <summary>场景切换时进度获取</summary>
+    E_CameraIn,
+    
+    E_CameraOut,
     E_SceneLoadChange,
 
     /// <summary>展示下一张卡（参数: RoundCard）</summary>
