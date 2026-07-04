@@ -37,20 +37,9 @@ public class Player : MonoBehaviour
     /// <summary>角色精灵渲染器（用于翻转）</summary>
     public SpriteRenderer sprite;
 
-    // ===== 参数 =====
-    [Header("Movement")]
-    /// <summary>移动速度</summary>
-    public float moveSpeed = 5f;
-    /// <summary>跳跃力度</summary>
-    public float jumpForce = 8f;
-
-    [Header("Anchor")]
-    /// <summary>发射船锚后锁定输入的时长（秒）</summary>
-    public float anchorFireDuration = 0.3f;
-
-    [Header("Hit")]
-    /// <summary>受击无敌时长（秒）</summary>
-    public float hitDuration = 0.5f;
+    // ===== 配置 =====
+    [Header("Config")]
+    [SerializeField] private ControlConfig config;
 
     // ===== 内部 =====
     private Rigidbody2D rb;
@@ -211,13 +200,14 @@ public class Player : MonoBehaviour
 
         // 保留重力方向分量（径向速度），只替换切线方向分量
         float radialSpeed = Vector2.Dot(rb.velocity, gravityDir);
-        rb.velocity = tangent * h * moveSpeed + gravityDir * radialSpeed;
+        rb.velocity = tangent * h * config.moveSpeed + gravityDir * radialSpeed;
 
         // Idle / Moving 状态切换
         if (Mathf.Abs(h) > 0.1f && currentState == PlayerState.Idle)
             ChangeState(PlayerState.Moving);
         else if (Mathf.Abs(h) < 0.1f && currentState == PlayerState.Moving)
             ChangeState(PlayerState.Idle);
+
     }
 
     /// <summary>
@@ -288,12 +278,12 @@ public class Player : MonoBehaviour
             case PlayerState.Jumping:
                 // 沿背离星球方向弹射
                 Vector2 up = -targetPlanet.GetGravityDirection(transform.position);
-                rb.AddForce(up * jumpForce, ForceMode2D.Impulse);
+                rb.AddForce(up * config.jumpForce, ForceMode2D.Impulse);
                 break;
 
             case PlayerState.AnchorFire:
                 // 启动发射锁定计时器
-                stateTimer = anchorFireDuration;
+                stateTimer = config.anchorFireDuration;
                 break;
 
             case PlayerState.BeingPulled:
@@ -302,7 +292,7 @@ public class Player : MonoBehaviour
 
             case PlayerState.Hit:
                 // 启动无敌计时器
-                stateTimer = hitDuration;
+                stateTimer = config.hitDuration;
                 break;
 
             case PlayerState.Death:
