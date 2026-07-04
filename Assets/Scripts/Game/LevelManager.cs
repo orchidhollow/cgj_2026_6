@@ -58,6 +58,7 @@ public class LevelManager : MonoBehaviour
     public void OnReachEndPoint()
     {
         Debug.Log("[LevelManager] 到达终点！关卡完成");
+        GameManager.Instance.OnGameOver();
         // TODO: 过关逻辑（加载下一关、播放动画等）
     }
 

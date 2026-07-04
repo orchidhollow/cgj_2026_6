@@ -25,6 +25,9 @@ public class Anchor : MonoBehaviour
     /// <summary>最大飞行距离（超过则原路返回）</summary>
     public float maxDistance = 20f;
 
+    /// <summary>可钩取的层名称</summary>
+    public string hitchLayerName = "Hitch";
+
     private Rigidbody2D rb;
     /// <summary>发射此锚点的角色</summary>
     private Player owner;
@@ -68,8 +71,9 @@ public class Anchor : MonoBehaviour
     }
 
     /// <summary>
-    /// 碰撞检测：命中任何非玩家、非星球、非 Trigger 物体后停下
-    /// 成为碰撞物体的子物体，通知 Player 切换到 BeingPulled 状态
+    /// 碰撞检测：只有 Hitch 层的物体才能被钩住
+    /// 命中 Hitch 层 → 停下，拉动角色
+    /// 命中其他层 → 直接返回（收回钩子）
     /// </summary>
     void OnTriggerEnter2D(Collider2D other)
     {
@@ -79,20 +83,39 @@ public class Anchor : MonoBehaviour
         // 忽略 Trigger 碰撞体（如星球重力范围）
         if (other.isTrigger) return;
 
-        hasHit = true;
+        // 检测是否为可钩取层
+        if (other.gameObject.layer == LayerMask.NameToLayer(hitchLayerName))
+        {
+            // 命中 Hitch 层，正常触发
+            hasHit = true;
+            rb.velocity = Vector2.zero;
+            rb.isKinematic = true;
+
+            // 记录命中物体和偏移量（手动跟随，避免 SetParent 导致畸变）
+            hitTarget = other.transform;
+            hitOffset = (Vector2)transform.position - (Vector2)hitTarget.position;
+
+            // 通知 Player 切换到 BeingPulled 状态
+            if (owner != null)
+                owner.OnAnchorHit();
+
+            // 广播命中事件
+            EventCenter.Instance.EventTrigger(E_EventType.E_AnchorHit, this);
+        }
+        else
+        {
+            // 命中非 Hitch 层，钩子收回
+            StartReturn();
+        }
+    }
+
+    /// <summary>
+    /// 开始返回（钩子收回）
+    /// </summary>
+    void StartReturn()
+    {
+        isReturning = true;
         rb.velocity = Vector2.zero;
-        rb.isKinematic = true;
-
-        // 记录命中物体和偏移量（手动跟随，避免 SetParent 导致畸变）
-        hitTarget = other.transform;
-        hitOffset = (Vector2)transform.position - (Vector2)hitTarget.position;
-
-        // 通知 Player 切换到 BeingPulled 状态
-        if (owner != null)
-            owner.OnAnchorHit();
-
-        // 广播命中事件
-        EventCenter.Instance.EventTrigger(E_EventType.E_AnchorHit, this);
     }
 
     void FixedUpdate()
@@ -121,8 +144,7 @@ public class Anchor : MonoBehaviour
             // 超过最大飞行距离，开始返回
             if (traveledDistance > maxDistance)
             {
-                isReturning = true;
-                rb.velocity = Vector2.zero;
+                StartReturn();
                 return;
             }
         }

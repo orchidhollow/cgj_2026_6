@@ -26,4 +26,6 @@ public enum E_EventType
     E_PlayerHit,
     /// <summary>玩家死亡（参数: Player）</summary>
     E_PlayerDeath,
+    E_GameStart,
+    E_GameOver,
 }
