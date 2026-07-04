@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 /// <summary>
 /// 角色控制器：状态机管理移动、跳跃、锚点、受击、死亡
@@ -41,6 +42,26 @@ public class Player : MonoBehaviour
     [Header("Config")]
     [SerializeField] private ControlConfig config;
 
+    // ===== 参数（兼容直接配置，当 config 为 null 时使用） =====
+    [Header("Movement")]
+    /// <summary>移动速度（config 为 null 时使用）</summary>
+    public float moveSpeed = 5f;
+    /// <summary>跳跃力度（config 为 null 时使用）</summary>
+    public float jumpForce = 8f;
+
+    [Header("Anchor")]
+    /// <summary>发射船锚后锁定输入的时长（秒）（config 为 null 时使用）</summary>
+    public float anchorFireDuration = 0.3f;
+
+    [Header("Hit")]
+    /// <summary>受击无敌时长（秒）（config 为 null 时使用）</summary>
+    public float hitDuration = 0.5f;
+
+    // ===== 死亡检测 =====
+    [Header("死亡检测")]
+    /// <summary>死亡点层名称</summary>
+    public string damageLayerName = "Damage";
+
     // ===== 内部 =====
     private Rigidbody2D rb;
     /// <summary>缓存的锚点实例（只创建一次，反复复用）</summary>
@@ -49,6 +70,14 @@ public class Player : MonoBehaviour
     private bool isAnchorOut;
     /// <summary>是否站在地面上（由碰撞检测自动维护）</summary>
     private bool isGrounded;
+    /// <summary>标记是否已经触发死亡，防止重复调用</summary>
+    private bool isDead;
+
+    // 配置属性访问器，优先使用 config，否则使用直接字段
+    private float MoveSpeed => config != null ? config.moveSpeed : moveSpeed;
+    private float JumpForce => config != null ? config.jumpForce : jumpForce;
+    private float AnchorFireDuration => config != null ? config.anchorFireDuration : anchorFireDuration;
+    private float HitDuration => config != null ? config.hitDuration : hitDuration;
 
     void Start()
     {
@@ -59,6 +88,9 @@ public class Player : MonoBehaviour
 
     void Update()
     {
+        // 死亡后不再处理输入和动画更新
+        if (currentState == PlayerState.Death) return;
+
         TickStateTimer();   // 递减状态计时器
         HandleInput();      // 根据当前状态处理输入
         UpdateAnimation();  // 同步 Animator 参数
@@ -66,6 +98,9 @@ public class Player : MonoBehaviour
 
     void FixedUpdate()
     {
+        // 死亡后不再处理物理
+        if (currentState == PlayerState.Death) return;
+
         UpdatePhysics();    // 根据当前状态执行物理
         CheckGrounded();    // 检测着地/下落状态切换
     }
@@ -179,6 +214,8 @@ public class Player : MonoBehaviour
     /// </summary>
     void ApplyGravity()
     {
+        if (targetPlanet == null) return;
+
         // 获取指向星球中心的重力方向
         Vector2 dir = targetPlanet.GetGravityDirection(transform.position);
         rb.AddForce(dir * targetPlanet.gravityStrength, ForceMode2D.Force);
@@ -194,13 +231,15 @@ public class Player : MonoBehaviour
     /// </summary>
     void ApplyMovement()
     {
+        if (targetPlanet == null) return;
+
         Vector2 tangent = targetPlanet.GetMovementDirection(transform.position);
         Vector2 gravityDir = targetPlanet.GetGravityDirection(transform.position);
         float h = Input.GetAxisRaw("Horizontal");
 
         // 保留重力方向分量（径向速度），只替换切线方向分量
         float radialSpeed = Vector2.Dot(rb.velocity, gravityDir);
-        rb.velocity = tangent * h * config.moveSpeed + gravityDir * radialSpeed;
+        rb.velocity = tangent * h * MoveSpeed + gravityDir * radialSpeed;
 
         // Idle / Moving 状态切换
         if (Mathf.Abs(h) > 0.1f && currentState == PlayerState.Idle)
@@ -220,9 +259,18 @@ public class Player : MonoBehaviour
 
     /// <summary>
     /// 碰撞进入：碰到星球大地碰撞体时，标记在地面上
+    /// 碰到 Damage 层死亡点立即死亡
     /// </summary>
     void OnCollisionEnter2D(Collision2D col)
     {
+        // 检测死亡点
+        if (col.gameObject.layer == LayerMask.NameToLayer(damageLayerName))
+        {
+            // 碰到死亡点，调用死亡方法
+            OnPlayerDie();
+            return;
+        }
+
         isGrounded = true;
     }
 
@@ -232,6 +280,19 @@ public class Player : MonoBehaviour
     void OnCollisionExit2D(Collision2D col)
     {
         isGrounded = false;
+    }
+
+    /// <summary>
+    /// 触发器进入：检测 Trigger 类型的死亡点
+    /// </summary>
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        // 检测死亡点（Trigger 类型）
+        if (other.gameObject.layer == LayerMask.NameToLayer(damageLayerName))
+        {
+            // 碰到死亡点，调用死亡方法
+            OnPlayerDie();
+        }
     }
 
     /// <summary>
@@ -277,12 +338,12 @@ public class Player : MonoBehaviour
             case PlayerState.Jumping:
                 // 沿背离星球方向弹射
                 Vector2 up = -targetPlanet.GetGravityDirection(transform.position);
-                rb.AddForce(up * config.jumpForce, ForceMode2D.Impulse);
+                rb.AddForce(up * JumpForce, ForceMode2D.Impulse);
                 break;
 
             case PlayerState.AnchorFire:
                 // 启动发射锁定计时器
-                stateTimer = config.anchorFireDuration;
+                stateTimer = AnchorFireDuration;
                 break;
 
             case PlayerState.BeingPulled:
@@ -291,7 +352,7 @@ public class Player : MonoBehaviour
 
             case PlayerState.Hit:
                 // 启动无敌计时器
-                stateTimer = config.hitDuration;
+                stateTimer = HitDuration;
                 break;
 
             case PlayerState.Death:
@@ -299,12 +360,50 @@ public class Player : MonoBehaviour
                 rb.velocity = Vector2.zero;
                 rb.bodyType = RigidbodyType2D.Static;
                 // 广播死亡事件
-                EventCenter.Instance.EventTrigger(E_EventType.E_PlayerDeath, this);
+                EventCenter.Instance?.EventTrigger(E_EventType.E_PlayerDeath, this);
                 break;
         }
 
         // 广播状态变化事件（供音效、特效等系统监听）
-        EventCenter.Instance.EventTrigger(E_EventType.E_PlayerStateChanged, this);
+        EventCenter.Instance?.EventTrigger(E_EventType.E_PlayerStateChanged, this);
+    }
+
+    // ===== 死亡处理 =====
+
+    /// <summary>
+    /// 玩家死亡：直接调用 GameManager 处理重开
+    /// 不依赖 EventCenter 广播（保留 EventCenter 作为备选）
+    /// </summary>
+    public void OnPlayerDie()
+    {
+        // 死亡状态不可重复触发
+        if (currentState == PlayerState.Death || isDead) return;
+
+        // 标记已死亡，防止重复触发
+        isDead = true;
+
+        // 切换到死亡状态
+        ChangeState(PlayerState.Death);
+
+        // 禁用碰撞体，防止继续触发死亡事件
+        Collider2D col = GetComponent<Collider2D>();
+        if (col != null) col.enabled = false;
+
+        // 确保 GameManager 存在
+        if (GameManager.Instance == null)
+        {
+            Debug.LogWarning("[Player] GameManager.Instance 为 null，尝试查找场景中的 GameManager");
+            // 尝试通过 MonoBehaviour 方式查找（兼容旧版本）
+            GameManager gm = FindObjectOfType<GameManager>();
+            if (gm == null)
+            {
+                Debug.LogError("[Player] 场景中未找到 GameManager，无法处理死亡重开");
+                return;
+            }
+        }
+
+        // 调用 GameManager 处理死亡和重开
+        GameManager.Instance.HandlePlayerDeath(this);
     }
 
     // ===== 外部调用接口（供 Anchor.cs 调用） =====
@@ -356,10 +455,10 @@ public class Player : MonoBehaviour
         ChangeState(PlayerState.Hit);
     }
 
-    /// <summary>死亡（外部调用）</summary>
+    /// <summary>死亡（外部调用，兼容旧版接口）</summary>
     public void Die()
     {
-        ChangeState(PlayerState.Death);
+        OnPlayerDie();
     }
 
     // ===== 发射锚点 =====
@@ -397,7 +496,7 @@ public class Player : MonoBehaviour
         currentAnchor.Init(this, dir);
         isAnchorOut = true;
         ChangeState(PlayerState.AnchorFire);
-        EventCenter.Instance.EventTrigger(E_EventType.E_AnchorFired, currentAnchor);
+        EventCenter.Instance?.EventTrigger(E_EventType.E_AnchorFired, currentAnchor);
     }
 
     // ===== 动画 =====
