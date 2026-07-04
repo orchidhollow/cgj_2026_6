@@ -16,6 +16,7 @@ public class Planet : MonoBehaviour
     public float gravityStrength = 15f;
     /// <summary>自转速度（度/秒，顺时针）</summary>
     public float rotateSpeed = 10f;
+    public float angelOffset = 0f;
 
     void Start()
     {
@@ -73,6 +74,7 @@ public class Planet : MonoBehaviour
     /// </summary>
     void OnTriggerEnter2D(Collider2D other)
     {
+        Debug.Log("Planet OnTriggerEnter2D");
         var p = other.GetComponent<Player>();
         if (p != null)
         {
@@ -81,7 +83,9 @@ public class Planet : MonoBehaviour
             other.transform.SetParent(transform, true);
             // 根据星球名称切换摄像机
             if (LevelManager.Instance != null)
-                LevelManager.Instance.SwitchToWideCamera(gameObject.name);
+                {
+                    LevelManager.Instance.SwitchToWideCamera(gameObject.name);
+                }
         }
     }
 

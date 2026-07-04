@@ -8,17 +8,18 @@ public class LevelManager : MonoBehaviour
 {
     [Header("Cameras")]
     /// <summary>角色跟随摄像机（正常视角）</summary>
-    public Camera playerCamera;
     /// <summary>广角摄像机（小行星等小星球使用）</summary>
     public Transform playerTransform;
     public Dictionary<string,Transform> planetTransforms = new Dictionary<string, Transform>();
-    public CinemachineVirtualCamera virtualCamera;
+    public CinemachineVirtualCamera PlayerCamera;
+    public CinemachineVirtualCamera planetCamera;
     public float virtualCameraSize = 10f;
     public float targetSize = 15f;
     public float CameraSmoothSpeed = 30f;
     public float CameraRotateSpeed = 5f;
-    private bool virtualCameraSizeOut = false;
-    private bool virtualCameraSizeIn = false;
+    public float RotateAngle = 0f;
+    private bool PlayerCameraSizeOut = false;
+    private bool PlayerCameraSizeIn = false;
     [Header("Level Points")]
     /// <summary>关卡起点（Player 初始化位置）</summary>
     public Transform startPoint;
@@ -37,7 +38,7 @@ public class LevelManager : MonoBehaviour
 
     void Awake()
     {
-
+        
         Instance = this;
         playerTransform = player.transform;
         planetTransforms.Add("小行星",GameObject.Find("小行星").transform);
@@ -61,33 +62,37 @@ public class LevelManager : MonoBehaviour
             player.transform.position = startPoint.position;
         }
     }
-    void Update()
+   
+    void LateUpdate()
     {
-        virtualCamera.m_Lens.Dutch = Mathf.LerpAngle(virtualCamera.m_Lens.Dutch,player.transform.eulerAngles.z,Time.deltaTime * CameraRotateSpeed);
-        if(virtualCameraSizeOut)
+        //RotateAngle = player.transform.eulerAngles.z;
+        //float currentSmoothAngle = Mathf.LerpAngle(PlayerCamera.m_Lens.Dutch,RotateAngle,Time.deltaTime * CameraRotateSpeed);
+        //PlayerCamera.m_Lens.Dutch = Mathf.DeltaAngle(RotateAngle, currentSmoothAngle);
+        
+        if(PlayerCameraSizeOut)
         {
-            if(Mathf.Abs(virtualCamera.m_Lens.OrthographicSize - targetSize) > 0.01f)
-                virtualCamera.m_Lens.OrthographicSize = Mathf.Lerp(
-                virtualCamera.m_Lens.OrthographicSize,
+            if(Mathf.Abs(PlayerCamera.m_Lens.OrthographicSize - targetSize) > 0.01f)
+                PlayerCamera.m_Lens.OrthographicSize = Mathf.Lerp(
+                PlayerCamera.m_Lens.OrthographicSize,
                 targetSize,
                 Time.deltaTime * CameraSmoothSpeed); 
             else
                 {
-                    virtualCamera.m_Lens.OrthographicSize = targetSize;
-                    virtualCameraSizeOut = false;
+                    PlayerCamera.m_Lens.OrthographicSize = targetSize;
+                    PlayerCameraSizeOut = false;
                 }
         }
-        else if(virtualCameraSizeIn)
+        else if(PlayerCameraSizeIn)
         {
-            if(Mathf.Abs(virtualCamera.m_Lens.OrthographicSize - virtualCameraSize) > 0.01f)
-                virtualCamera.m_Lens.OrthographicSize = Mathf.Lerp(
-                    virtualCamera.m_Lens.OrthographicSize,
+            if(Mathf.Abs(PlayerCamera.m_Lens.OrthographicSize - virtualCameraSize) > 0.01f)
+                PlayerCamera.m_Lens.OrthographicSize = Mathf.Lerp(
+                    PlayerCamera.m_Lens.OrthographicSize,
                      virtualCameraSize,
                       Time.deltaTime * CameraSmoothSpeed);
             else
             {
-                virtualCamera.m_Lens.OrthographicSize = virtualCameraSize;
-                virtualCameraSizeIn = false;
+                PlayerCamera.m_Lens.OrthographicSize = virtualCameraSize;
+                PlayerCameraSizeIn = false;
             }
         }
     }
@@ -112,30 +117,32 @@ public class LevelManager : MonoBehaviour
     /// <summary>切换到角色跟随摄像机</summary>
     public void SwitchToPlayerCamera()
     {
-        if(virtualCamera != null && playerTransform != null)
+        if(PlayerCamera != null && playerTransform != null)
         {
-            virtualCameraSizeIn = true;
-            virtualCamera.Follow = playerTransform;
+            PlayerCameraSizeIn = true;
+            //PlayerCamera.Follow = playerTransform;
+            planetCamera.Priority = 0;
         }
     }
 
     /// <summary>切换到广角摄像机</summary>
     public void SwitchToWideCamera(string planetName = SmallPlanetName)
     {
-        if(virtualCamera != null )
+        if(PlayerCamera != null )
         {
            
             if(planetTransforms.TryGetValue(planetName, out Transform wideCameraTransform))
             {
-                 var body = virtualCamera.GetCinemachineComponent<CinemachineFramingTransposer>();
+                 var body = PlayerCamera.GetCinemachineComponent<CinemachineFramingTransposer>();
                 if(body!= null)
                 {
                      body.m_XDamping = 4.0f;
                      body.m_YDamping = 4.0f;
                      body.m_ScreenX = 0.5f;
                  }
-                virtualCameraSizeOut = true;
-                virtualCamera.Follow = wideCameraTransform;
+                PlayerCameraSizeOut = true;
+                //PlayerCamera.Follow = wideCameraTransform;
+                planetCamera.Priority = 11;
             }
             else
             {
