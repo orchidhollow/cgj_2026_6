@@ -1,8 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// 关卡管理器：管理摄像机切换
-/// 根据当前星球切换角色摄像机或广角摄像机
+/// 关卡管理器：管理摄像机切换、起点/终点、关卡流程
 /// </summary>
 public class LevelManager : MonoBehaviour
 {
@@ -11,6 +10,16 @@ public class LevelManager : MonoBehaviour
     public Camera playerCamera;
     /// <summary>广角摄像机（小行星等小星球使用）</summary>
     public Camera wideCamera;
+
+    [Header("Level Points")]
+    /// <summary>关卡起点（Player 初始化位置）</summary>
+    public Transform startPoint;
+    /// <summary>关卡终点（Player 触碰后触发过关）</summary>
+    public Transform endPoint;
+
+    [Header("References")]
+    /// <summary>Player 引用</summary>
+    public Player player;
 
     /// <summary>小行星名称（匹配时切换广角摄像机）</summary>
     private const string SmallPlanetName = "小行星";
@@ -21,8 +30,35 @@ public class LevelManager : MonoBehaviour
     void Awake()
     {
         Instance = this;
+    }
+
+    void Start()
+    {
         // 默认使用角色摄像机
         SwitchToPlayerCamera();
+        // 将 Player 初始化到起点
+        InitPlayerToStart();
+    }
+
+    /// <summary>
+    /// 将 Player 传送到起点位置
+    /// </summary>
+    void InitPlayerToStart()
+    {
+        if (player != null && startPoint != null)
+        {
+            player.transform.position = startPoint.position;
+        }
+    }
+
+    /// <summary>
+    /// 终点触发：Player 碰到终点时调用
+    /// 由终点物体的 Trigger 调用
+    /// </summary>
+    public void OnReachEndPoint()
+    {
+        Debug.Log("[LevelManager] 到达终点！关卡完成");
+        // TODO: 过关逻辑（加载下一关、播放动画等）
     }
 
     /// <summary>
