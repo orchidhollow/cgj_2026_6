@@ -73,7 +73,6 @@ public class Player : MonoBehaviour
         TickStateTimer();   // 递减状态计时器
         HandleInput();      // 根据当前状态处理输入
         UpdateAnimation();  // 同步 Animator 参数
-        Debug.Log($"[Player] State: {currentState}");
     }
 
     void FixedUpdate()
@@ -105,7 +104,7 @@ public class Player : MonoBehaviour
         {
             case PlayerState.AnchorFire:
                 // 发射动画结束，根据是否着地切到 Idle 或 Falling
-                ChangeState(IsGrounded() ? PlayerState.Idle : PlayerState.Falling);
+                ChangeState(isGrounded ? PlayerState.Idle : PlayerState.Falling);
                 break;
             case PlayerState.Hit:
                 // 无敌结束，恢复 Idle
@@ -129,7 +128,7 @@ public class Player : MonoBehaviour
             case PlayerState.Idle:
             case PlayerState.Moving:
                 // 空格跳跃（必须着地）
-                if (Input.GetButtonDown("Jump") && IsGrounded())
+                if (Input.GetButtonDown("Jump") && isGrounded)
                     ChangeState(PlayerState.Jumping);
                 // 鼠标左键发射锚点
                 if (Input.GetMouseButtonDown(0))
@@ -143,7 +142,7 @@ public class Player : MonoBehaviour
                     FireAnchor();
                 break;
 
-            // AnchorFire / BeingPulled / Hit / Death 锁定输入
+                // AnchorFire / BeingPulled / Hit / Death 锁定输入
         }
     }
 
@@ -254,7 +253,7 @@ public class Player : MonoBehaviour
     void CheckGrounded()
     {
         // 下落中着地 → Idle
-        if (currentState == PlayerState.Falling && IsGrounded())
+        if (currentState == PlayerState.Falling && isGrounded)
             ChangeState(PlayerState.Idle);
 
         // 跳跃中开始下降 → Falling（需要 targetPlanet 才能判断方向）
@@ -321,22 +320,37 @@ public class Player : MonoBehaviour
 
     // ===== 外部调用接口（供 Anchor.cs 调用） =====
 
-    /// <summary>锚点命中物体时调用，切换到 BeingPulled 状态</summary>
+    /// <summary>锚点命中 Hitch 悬挂点时调用，切换到 BeingPulled 状态</summary>
     public void OnAnchorHit()
     {
         ChangeState(PlayerState.BeingPulled);
     }
 
+    /// <summary>进入悬挂状态（线已收回，保持钩住，等待手动释放）</summary>
+    public void OnAnchorHanging()
+    {
+        // 悬挂状态：保持 BeingPulled 状态，等待点击左键释放
+        // 可以在这里播放悬挂动画或音效
+        Debug.Log("[Player] 进入悬挂状态，点击左键释放");
+    }
+
+    /// <summary>开始释放锚点（收线中）</summary>
+    public void OnAnchorRelease()
+    {
+        // 可以在这里播放收线动画或音效
+        Debug.Log("[Player] 开始释放锚点");
+    }
+
     /// <summary>角色到达锚点位置时调用，根据是否着地切到 Idle 或 Falling</summary>
     public void OnAnchorArrived()
     {
-        ChangeState(IsGrounded() ? PlayerState.Idle : PlayerState.Falling);
+        ChangeState(isGrounded ? PlayerState.Idle : PlayerState.Falling);
     }
 
     /// <summary>锚点返回消失时调用，根据是否着地切到 Idle 或 Falling</summary>
     public void OnAnchorReturned()
     {
-        ChangeState(IsGrounded() ? PlayerState.Idle : PlayerState.Falling);
+        ChangeState(isGrounded ? PlayerState.Idle : PlayerState.Falling);
     }
 
     /// <summary>锚点回收时调用，允许再次发射</summary>
@@ -410,15 +424,15 @@ public class Player : MonoBehaviour
         int animState;
         switch (currentState)
         {
-            case PlayerState.Idle:        animState = 0; break;
-            case PlayerState.Moving:      animState = 1; break;
-            case PlayerState.Jumping:     animState = 2; break;
-            case PlayerState.Falling:     animState = 2; break;  // 复用 Jumping 动画
-            case PlayerState.AnchorFire:  animState = 4; break;
+            case PlayerState.Idle: animState = 0; break;
+            case PlayerState.Moving: animState = 1; break;
+            case PlayerState.Jumping: animState = 2; break;
+            case PlayerState.Falling: animState = 2; break;  // 复用 Jumping 动画
+            case PlayerState.AnchorFire: animState = 4; break;
             case PlayerState.BeingPulled: animState = 2; break;  // 复用 Jumping 动画
-            case PlayerState.Hit:         animState = 6; break;
-            case PlayerState.Death:       animState = 7; break;
-            default:                      animState = 0; break;
+            case PlayerState.Hit: animState = 6; break;
+            case PlayerState.Death: animState = 7; break;
+            default: animState = 0; break;
         }
         anim.SetInteger("state", animState);
     }
