@@ -7526,6 +7526,10 @@ PrefabInstance:
       value: 100
       objectReference: {fileID: 0}
     - target: {fileID: 7894657737083386013, guid: e2ac7d5cfafc0154a832279e66ea07a4, type: 3}
+      propertyPath: laserMaterial
+      value: 
+      objectReference: {fileID: 2100000, guid: 456c93c19cbdeec4197964b669b2d9a6, type: 2}
+    - target: {fileID: 7894657737083386013, guid: e2ac7d5cfafc0154a832279e66ea07a4, type: 3}
       propertyPath: arriveDistance
       value: 0.1
       objectReference: {fileID: 0}

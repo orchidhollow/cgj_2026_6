@@ -28,6 +28,16 @@ public class Anchor : MonoBehaviour
     /// <summary>可钩取的层名称</summary>
     public string hitchLayerName = "Hitch";
 
+    [Header("激光锁链")]
+    /// <summary>激光渲染器</summary>
+    public LineRenderer chainRenderer;
+    /// <summary>激光材质</summary>
+    public Material laserMaterial;
+    /// <summary>锁链宽度</summary>
+    public float chainWidth = 0.1f;
+    /// <summary>锁链颜色</summary>
+    public Color chainColor = Color.cyan;
+
     private Rigidbody2D rb;
     /// <summary>发射此锚点的角色</summary>
     private Player owner;
@@ -47,6 +57,27 @@ public class Anchor : MonoBehaviour
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
+        SetupChainRenderer();
+    }
+
+    /// <summary>
+    /// 初始化激光渲染器
+    /// </summary>
+    void SetupChainRenderer()
+    {
+        if (chainRenderer == null)
+        {
+            chainRenderer = gameObject.AddComponent<LineRenderer>();
+        }
+
+        chainRenderer.positionCount = 2;
+        chainRenderer.startWidth = chainWidth;
+        chainRenderer.endWidth = chainWidth;
+        chainRenderer.useWorldSpace = true;
+        chainRenderer.material = laserMaterial;
+        chainRenderer.startColor = chainColor;
+        chainRenderer.endColor = chainColor;
+        chainRenderer.enabled = false;
     }
 
     /// <summary>
@@ -68,12 +99,15 @@ public class Anchor : MonoBehaviour
         isReturning = false;
         traveledDistance = 0f;
         lastPosition = transform.position;
+
+        // 激活激光
+        chainRenderer.enabled = true;
     }
 
     /// <summary>
     /// 碰撞检测：只有 Hitch 层的物体才能被钩住
-    /// 命中 Hitch 层 → 停下，拉动角色
-    /// 命中其他层 → 直接返回（收回钩子）
+    /// 命中 Hitch 层 → 停下，成为子物体，拉动角色
+    /// 命中非 Hitch 层 → 直接返回（收回钩子）
     /// </summary>
     void OnTriggerEnter2D(Collider2D other)
     {
@@ -116,6 +150,28 @@ public class Anchor : MonoBehaviour
     {
         isReturning = true;
         rb.velocity = Vector2.zero;
+    }
+
+    void Update()
+    {
+        // 更新激光锁链：连接玩家和锚点
+        UpdateChainVisual();
+    }
+
+    /// <summary>
+    /// 更新激光锁链视觉效果
+    /// </summary>
+    void UpdateChainVisual()
+    {
+        if (!chainRenderer.enabled || owner == null) return;
+
+        // 起点：玩家位置
+        Vector2 startPos = owner.transform.position;
+        // 终点：锚点位置
+        Vector2 endPos = transform.position;
+
+        chainRenderer.SetPosition(0, startPos);
+        chainRenderer.SetPosition(1, endPos);
     }
 
     void FixedUpdate()
@@ -186,6 +242,9 @@ public class Anchor : MonoBehaviour
             owner.OnAnchorRecycled();
             owner.OnAnchorReturned();
         }
+
+        // 隐藏激光
+        chainRenderer.enabled = false;
 
         // 重置所有状态
         hasHit = false;
