@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 8927254856706035207}
   - component: {fileID: 4161792394188323639}
   - component: {fileID: 59770908505888632}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: "\u8239\u951A"
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -173,9 +173,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   speed: 20
-  pullForce: 30
+  pullSpeed: 15
   arriveDistance: 0.5
-  maxLifetime: 3
+  maxDistance: 20
+  hitchLayerName: Hitch
 --- !u!58 &59770908505888632
 CircleCollider2D:
   m_ObjectHideFlags: 0
