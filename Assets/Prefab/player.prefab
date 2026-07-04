@@ -201,10 +201,7 @@ MonoBehaviour:
   anchorPrefab: {fileID: 6745395986279098585}
   anim: {fileID: 0}
   sprite: {fileID: 0}
-  moveSpeed: 5
-  jumpForce: 8
-  anchorFireDuration: 0.3
-  hitDuration: 0.5
+  config: {fileID: 0}
 --- !u!95 &260580690585217725
 Animator:
   serializedVersion: 5
