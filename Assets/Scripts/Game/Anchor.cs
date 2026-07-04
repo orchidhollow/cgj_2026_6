@@ -6,8 +6,10 @@ using UnityEngine;
 /// 生命周期：
 /// 1. Init() 初始化，朝鼠标方向飞行
 /// 2. 飞行中累计距离，超过 maxDistance 未命中 → 原路返回 → 消失
-/// 3. 命中物体 → 停下，成为子物体，拉动角色
-/// 4. 角色到达 → 消失
+/// 3. 命中 Hitch 层物体 → 停下，成为悬挂点，拉动角色
+/// 4. 命中其他层物体 → 直接收回（钩子返回）
+/// 5. 角色到达悬挂点 → 线收回 → 悬挂状态（隐藏激光，保持钩住）
+/// 6. 点击鼠标左键 → 释放 → 回收
 ///
 /// 通过 EventCenter 广播 E_AnchorFired / E_AnchorHit / E_AnchorArrived 事件
 /// </summary>
@@ -25,28 +27,72 @@ public class Anchor : MonoBehaviour
     /// <summary>最大飞行距离（超过则原路返回）</summary>
     public float maxDistance = 20f;
 
-    /// <summary>可钩取的层名称</summary>
+    /// <summary>可悬挂的层名称（Hitch）</summary>
     public string hitchLayerName = "Hitch";
+
+    [Header("激光锁链")]
+    /// <summary>激光渲染器</summary>
+    public LineRenderer chainRenderer;
+    /// <summary>激光材质</summary>
+    public Material laserMaterial;
+    /// <summary>锁链宽度</summary>
+    public float chainWidth = 0.2f;
+    /// <summary>锁链颜色</summary>
+    public Color chainColor = Color.cyan;
 
     private Rigidbody2D rb;
     /// <summary>发射此锚点的角色</summary>
     private Player owner;
-    /// <summary>是否已命中物体</summary>
+    /// <summary>是否已命中悬挂点</summary>
     private bool hasHit;
-    /// <summary>命中的物体（手动跟随，避免 SetParent 导致畸变）</summary>
+    /// <summary>命中的悬挂点物体（手动跟随，避免 SetParent 导致畸变）</summary>
     private Transform hitTarget;
     /// <summary>命中时相对物体的偏移量</summary>
     private Vector2 hitOffset;
-    /// <summary>是否正在返回（未命中到达最大距离后）</summary>
+    /// <summary>是否正在返回（未命中或命中非Hitch层）</summary>
     private bool isReturning;
     /// <summary>已飞行距离（用于判断是否超过 maxDistance）</summary>
     private float traveledDistance;
     /// <summary>上一帧位置（用于计算每帧飞行距离）</summary>
     private Vector2 lastPosition;
 
+    /// <summary>是否处于悬挂状态（线已收回，保持钩住）</summary>
+    private bool isHanging;
+    /// <summary>是否已请求释放（等待线收回）</summary>
+    private bool releasePending;
+
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
+        SetupChainRenderer();
+    }
+
+    /// <summary>
+    /// 初始化激光渲染器
+    /// </summary>
+    void SetupChainRenderer()
+    {
+        if (chainRenderer == null)
+        {
+            chainRenderer = gameObject.AddComponent<LineRenderer>();
+        }
+
+        chainRenderer.positionCount = 2;
+        chainRenderer.startWidth = chainWidth;
+        chainRenderer.endWidth = chainWidth;
+        chainRenderer.useWorldSpace = true;
+
+        // 使用简单材质
+        if (laserMaterial == null)
+        {
+            laserMaterial = new Material(Shader.Find("Unlit/Color"));
+            laserMaterial.color = chainColor;
+        }
+
+        chainRenderer.material = laserMaterial;
+        chainRenderer.startColor = chainColor;
+        chainRenderer.endColor = chainColor;
+        chainRenderer.enabled = false;
     }
 
     /// <summary>
@@ -61,32 +107,90 @@ public class Anchor : MonoBehaviour
         // 确保 rb 引用有效（复用时 Awake 不会再执行）
         if (rb == null)
             rb = GetComponent<Rigidbody2D>();
+
         rb.gravityScale = 0;
         rb.velocity = direction.normalized * speed;
         GetComponent<CircleCollider2D>().isTrigger = true;
+
+        // 重置所有状态
         hasHit = false;
         isReturning = false;
+        isHanging = false;
+        releasePending = false;
         traveledDistance = 0f;
         lastPosition = transform.position;
+
+        // 激活激光
+        chainRenderer.enabled = true;
+    }
+
+    void Update()
+    {
+        // 悬挂状态下点击左键释放
+        if (isHanging && Input.GetMouseButtonDown(0))
+        {
+            Release();
+        }
+
+        // 更新激光锁链：连接玩家和锚点
+        UpdateChainVisual();
     }
 
     /// <summary>
-    /// 碰撞检测：只有 Hitch 层的物体才能被钩住
-    /// 命中 Hitch 层 → 停下，拉动角色
-    /// 命中其他层 → 直接返回（收回钩子）
+    /// 请求释放钩子（开始收线）
+    /// </summary>
+    void Release()
+    {
+        if (releasePending) return;
+
+        releasePending = true;
+        isHanging = false;
+        chainRenderer.enabled = true;  // 重新显示线（收线过程）
+
+        // 通知 Player 开始释放
+        owner?.OnAnchorRelease();
+    }
+
+    /// <summary>
+    /// 更新激光锁链视觉效果
+    /// </summary>
+    void UpdateChainVisual()
+    {
+        if (!chainRenderer.enabled || owner == null) return;
+
+        // 悬挂状态隐藏激光
+        if (isHanging)
+        {
+            chainRenderer.enabled = false;
+            return;
+        }
+
+        // 起点：玩家位置
+        Vector2 startPos = owner.transform.position;
+        // 终点：锚点位置
+        Vector2 endPos = transform.position;
+
+        chainRenderer.SetPosition(0, startPos);
+        chainRenderer.SetPosition(1, endPos);
+    }
+
+    /// <summary>
+    /// 碰撞检测：
+    /// 命中 Hitch 层 → 悬挂点，停下，拉动角色
+    /// 命中其他层（包括 Ground）→ 直接收回（钩子返回）
     /// </summary>
     void OnTriggerEnter2D(Collider2D other)
     {
-        if (hasHit || rb == null) return;
+        if (hasHit || isReturning || rb == null) return;
         // 忽略 tag 为 Player 和 Planet 的物体
         if (other.CompareTag("Player") || other.CompareTag("Planet")) return;
         // 忽略 Trigger 碰撞体（如星球重力范围）
         if (other.isTrigger) return;
 
-        // 检测是否为可钩取层
+        // 检测是否为 Hitch 层（悬挂点）
         if (other.gameObject.layer == LayerMask.NameToLayer(hitchLayerName))
         {
-            // 命中 Hitch 层，正常触发
+            // 命中 Hitch 层，成为悬挂点
             hasHit = true;
             rb.velocity = Vector2.zero;
             rb.isKinematic = true;
@@ -104,7 +208,7 @@ public class Anchor : MonoBehaviour
         }
         else
         {
-            // 命中非 Hitch 层，钩子收回
+            // 命中非 Hitch 层（Ground等），直接收回钩子
             StartReturn();
         }
     }
@@ -122,7 +226,7 @@ public class Anchor : MonoBehaviour
     {
         if (owner == null) return;
 
-        // ===== 返回模式：朝角色飞去，到达后消失 =====
+        // ===== 返回模式：朝角色飞去，到达后回收 =====
         if (isReturning)
         {
             Vector2 returnDir = ((Vector2)owner.transform.position - (Vector2)transform.position).normalized;
@@ -149,14 +253,32 @@ public class Anchor : MonoBehaviour
             }
         }
 
-        // ===== 命中模式：拉动角色向锚点移动 =====
+        // ===== 命中模式：拉动角色向悬挂点移动 =====
         if (!hasHit) return;
 
         // 手动跟随命中物体（保持偏移量，不受父物体 scale/rotation 影响）
         if (hitTarget != null)
             transform.position = (Vector2)hitTarget.position + hitOffset;
 
-        // 直接将角色位置向锚点移动（匀速，不受重力影响）
+        // 等待释放状态：收线到玩家位置
+        if (releasePending)
+        {
+            transform.position = Vector2.MoveTowards(
+                transform.position,
+                owner.transform.position,
+                speed * Time.fixedDeltaTime
+            );
+
+            // 检查是否完全收回
+            float dist = Vector2.Distance(transform.position, owner.transform.position);
+            if (dist < arriveDistance)
+            {
+                Recycle();
+            }
+            return;
+        }
+
+        // 正常拉动角色
         Vector2 newPos = Vector2.MoveTowards(
             owner.transform.position,
             transform.position,
@@ -164,14 +286,26 @@ public class Anchor : MonoBehaviour
         );
         owner.transform.position = newPos;
 
-        // 到达判定：角色足够接近锚点时回收
-        float dist = Vector2.Distance(transform.position, owner.transform.position);
-        if (dist < arriveDistance)
+        // 到达判定：角色足够接近悬挂点时进入悬挂
+        float arriveDist = Vector2.Distance(transform.position, owner.transform.position);
+        if (arriveDist < arriveDistance)
         {
-            if (owner != null) owner.OnAnchorArrived();
-            EventCenter.Instance.EventTrigger(E_EventType.E_AnchorArrived, this);
-            Recycle();
+            EnterHanging();
         }
+    }
+
+    /// <summary>
+    /// 进入悬挂状态：线收回，隐藏激光，保持钩住
+    /// </summary>
+    void EnterHanging()
+    {
+        isHanging = true;
+        rb.velocity = Vector2.zero;
+        chainRenderer.enabled = false;
+
+        // 通知 Player 进入悬挂状态
+        if (owner != null)
+            owner.OnAnchorHanging();
     }
 
     /// <summary>
@@ -187,9 +321,14 @@ public class Anchor : MonoBehaviour
             owner.OnAnchorReturned();
         }
 
+        // 隐藏激光
+        chainRenderer.enabled = false;
+
         // 重置所有状态
         hasHit = false;
         isReturning = false;
+        isHanging = false;
+        releasePending = false;
         hitTarget = null;
         rb.velocity = Vector2.zero;
         rb.isKinematic = false;
