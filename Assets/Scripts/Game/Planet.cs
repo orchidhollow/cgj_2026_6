@@ -1,4 +1,3 @@
-using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -32,7 +31,7 @@ public class Planet : MonoBehaviour
             if (col.isTrigger && col.bounds.Contains(player.transform.position))
             {
                 player.targetPlanet = this;
-                StartCoroutine(SetParentNextFrame(player.transform, transform));
+                player.transform.SetParent(transform, true);
                 break;
             }
         }
@@ -78,8 +77,8 @@ public class Planet : MonoBehaviour
         if (p != null)
         {
             p.targetPlanet = this;
-            // 延迟一帧设置父物体，避免在激活/禁用过程中报错
-            StartCoroutine(SetParentNextFrame(other.transform, transform));
+            // 直接设置父物体（worldPositionStays=true 保持世界坐标不变）
+            other.transform.SetParent(transform, true);
             // 根据星球名称切换摄像机
             if (LevelManager.Instance != null)
                 LevelManager.Instance.SwitchCameraByPlanet(gameObject.name);
@@ -89,7 +88,7 @@ public class Planet : MonoBehaviour
     /// <summary>
     /// 玩家离开重力范围 Trigger：
     /// 1. 解绑 targetPlanet
-    /// 2. 延迟一帧取消子物体
+    /// 2. 取消子物体
     /// </summary>
     void OnTriggerExit2D(Collider2D other)
     {
@@ -97,19 +96,7 @@ public class Planet : MonoBehaviour
         if (p != null && p.targetPlanet == this)
         {
             p.targetPlanet = null;
-            // 延迟一帧清除父物体，避免在激活/禁用过程中报错
-            StartCoroutine(SetParentNextFrame(other.transform, null));
+            other.transform.SetParent(null, true);
         }
-    }
-
-    /// <summary>
-    /// 延迟一帧设置父物体
-    /// 解决 Unity 在激活/禁用过程中不能 SetParent 的问题
-    /// </summary>
-    IEnumerator SetParentNextFrame(Transform child, Transform parent)
-    {
-        yield return null;
-        if (child != null)
-            child.SetParent(parent);
     }
 }
