@@ -87,16 +87,11 @@ public class Planet : MonoBehaviour
 
     /// <summary>
     /// 玩家离开重力范围 Trigger：
-    /// 1. 解绑 targetPlanet
-    /// 2. 取消子物体
+    /// 不做任何操作，保留 targetPlanet 和父子关系
+    /// 只在进入其他星球 Trigger 时才切换
     /// </summary>
     void OnTriggerExit2D(Collider2D other)
     {
-        var p = other.GetComponent<Player>();
-        if (p != null && p.targetPlanet == this)
-        {
-            p.targetPlanet = null;
-            other.transform.SetParent(null, true);
-        }
+        // 离开时不清空重力，不做任何改变
     }
 }
