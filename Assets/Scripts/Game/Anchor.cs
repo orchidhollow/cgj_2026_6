@@ -17,18 +17,8 @@ using UnityEngine;
 [RequireComponent(typeof(CircleCollider2D))]
 public class Anchor : MonoBehaviour
 {
-    [Header("Settings")]
-    /// <summary>飞行速度</summary>
-    public float speed = 20f;
-    /// <summary>拉动角色的速度（MoveTowards 每秒移动距离）</summary>
-    public float pullSpeed = 15f;
-    /// <summary>到达判定距离（与角色距离小于此值时回收）</summary>
-    public float arriveDistance = 0.5f;
-    /// <summary>最大飞行距离（超过则原路返回）</summary>
-    public float maxDistance = 20f;
-
-    /// <summary>可悬挂的层名称（Hitch）</summary>
-    public string hitchLayerName = "Hitch";
+    [Header("Config")]
+    [SerializeField] private ControlConfig config;
 
     [Header("激光锁链")]
     /// <summary>激光渲染器</summary>
@@ -109,7 +99,7 @@ public class Anchor : MonoBehaviour
             rb = GetComponent<Rigidbody2D>();
 
         rb.gravityScale = 0;
-        rb.velocity = direction.normalized * speed;
+        rb.velocity = direction.normalized * config.anchorSpeed;
         GetComponent<CircleCollider2D>().isTrigger = true;
 
         // 重置所有状态
@@ -182,13 +172,15 @@ public class Anchor : MonoBehaviour
     void OnTriggerEnter2D(Collider2D other)
     {
         if (hasHit || isReturning || rb == null) return;
+        // 未飞出安全距离，忽略碰撞
+        if (traveledDistance < config.anchorCollisionStartDistance) return;
         // 忽略 tag 为 Player 和 Planet 的物体
         if (other.CompareTag("Player") || other.CompareTag("Planet")) return;
         // 忽略 Trigger 碰撞体（如星球重力范围）
         if (other.isTrigger) return;
 
         // 检测是否为 Hitch 层（悬挂点）
-        if (other.gameObject.layer == LayerMask.NameToLayer(hitchLayerName))
+        if (other.gameObject.layer == LayerMask.NameToLayer(config.hitchLayerName))
         {
             // 命中 Hitch 层，成为悬挂点
             hasHit = true;
@@ -230,10 +222,10 @@ public class Anchor : MonoBehaviour
         if (isReturning)
         {
             Vector2 returnDir = ((Vector2)owner.transform.position - (Vector2)transform.position).normalized;
-            rb.velocity = returnDir * speed;
+            rb.velocity = returnDir * config.anchorSpeed;
 
             float returnDist = Vector2.Distance(transform.position, owner.transform.position);
-            if (returnDist < arriveDistance)
+            if (returnDist < config.anchorArriveDistance)
             {
                 Recycle();
             }
@@ -246,7 +238,7 @@ public class Anchor : MonoBehaviour
             traveledDistance += Vector2.Distance(transform.position, lastPosition);
             lastPosition = transform.position;
             // 超过最大飞行距离，开始返回
-            if (traveledDistance > maxDistance)
+            if (traveledDistance > config.anchorMaxDistance)
             {
                 StartReturn();
                 return;
@@ -266,12 +258,12 @@ public class Anchor : MonoBehaviour
             transform.position = Vector2.MoveTowards(
                 transform.position,
                 owner.transform.position,
-                speed * Time.fixedDeltaTime
+                config.anchorSpeed * Time.fixedDeltaTime
             );
 
             // 检查是否完全收回
             float dist = Vector2.Distance(transform.position, owner.transform.position);
-            if (dist < arriveDistance)
+            if (dist < config.anchorArriveDistance)
             {
                 Recycle();
             }
@@ -282,13 +274,13 @@ public class Anchor : MonoBehaviour
         Vector2 newPos = Vector2.MoveTowards(
             owner.transform.position,
             transform.position,
-            pullSpeed * Time.fixedDeltaTime
+            config.anchorPullSpeed * Time.fixedDeltaTime
         );
         owner.transform.position = newPos;
 
         // 到达判定：角色足够接近悬挂点时进入悬挂
         float arriveDist = Vector2.Distance(transform.position, owner.transform.position);
-        if (arriveDist < arriveDistance)
+        if (arriveDist < config.anchorArriveDistance)
         {
             EnterHanging();
         }

@@ -31,6 +31,8 @@ public class ControlConfig : ScriptableObject
     public float anchorArriveDistance = 0.5f;
     [Tooltip("船锚最大飞行距离，超过则原路返回")]
     public float anchorMaxDistance = 20f;
+    [Tooltip("船锚发射后飞出多少距离才开启碰撞检测，避免命中身边物体")]
+    public float anchorCollisionStartDistance = 1.5f;
     [Tooltip("可钩取物体所在的 Layer 名称，需要在 Tag & Layer 中配置")]
     public string hitchLayerName = "Hitch";
 }
