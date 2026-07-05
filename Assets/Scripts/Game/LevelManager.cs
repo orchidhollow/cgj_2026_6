@@ -50,9 +50,6 @@ public class LevelManager : MonoBehaviour
         SwitchToPlayerCamera();
         // 将 Player 初始化到起点
         InitPlayerToStart();
-        // 播放游戏配乐和环境音
-        FMODAudioMgr.Instance?.PlayBGMGame();
-        FMODAudioMgr.Instance?.PlayAmbience();
     }
 
     /// <summary>
@@ -72,7 +69,7 @@ public class LevelManager : MonoBehaviour
         //float currentSmoothAngle = Mathf.LerpAngle(PlayerCamera.m_Lens.Dutch,RotateAngle,Time.deltaTime * CameraRotateSpeed);
         //PlayerCamera.m_Lens.Dutch = Mathf.DeltaAngle(RotateAngle, currentSmoothAngle);
         
-        /*if(PlayerCameraSizeOut)
+        if(PlayerCameraSizeOut)
         {
             if(Mathf.Abs(PlayerCamera.m_Lens.OrthographicSize - targetSize) > 0.01f)
                 PlayerCamera.m_Lens.OrthographicSize = Mathf.Lerp(
@@ -83,10 +80,9 @@ public class LevelManager : MonoBehaviour
                 {
                     PlayerCamera.m_Lens.OrthographicSize = targetSize;
                     PlayerCameraSizeOut = false;
-                    PlayerCameraSizeIn = true;
                 }
         }
-        if(PlayerCameraSizeIn)
+        else if(PlayerCameraSizeIn)
         {
             if(Mathf.Abs(PlayerCamera.m_Lens.OrthographicSize - virtualCameraSize) > 0.01f)
                 PlayerCamera.m_Lens.OrthographicSize = Mathf.Lerp(
@@ -97,11 +93,8 @@ public class LevelManager : MonoBehaviour
             {
                 PlayerCamera.m_Lens.OrthographicSize = virtualCameraSize;
                 PlayerCameraSizeIn = false;
-                PlayerCameraSizeOut = true;
             }
         }
-        */
-        
     }
     /// <summary>
     /// 终点触发：Player 碰到终点时调用
@@ -111,22 +104,7 @@ public class LevelManager : MonoBehaviour
     {
         Debug.Log("[LevelManager] 到达终点！关卡完成");
         GameManager.Instance.OnGameOver();
-    }
-
-    /// <summary>
-    /// 玩家死亡：将 Player 重置回起点位置
-    /// 由 Player.OnPlayerDie 调用
-    /// </summary>
-    public void HandlePlayerDeath(Player player)
-    {
-        if (player == null || startPoint == null) return;
-
-        // 重置玩家位置到起点
-        player.transform.position = startPoint.position;
-        player.transform.rotation = startPoint.rotation;
-
-        // 恢复玩家状态
-        player.ResetAfterDeath();
+        // TODO: 过关逻辑（加载下一关、播放动画等）
     }
 
     /// <summary>
@@ -168,7 +146,6 @@ public class LevelManager : MonoBehaviour
             }
             else
             {
-                planetCamera.Priority = 0;
                 Debug.Log("[LevelManager] 未找到小行星的 Transform，请确保在 Awake 中正确添加到 planetTransforms 字典中");
             }
         }

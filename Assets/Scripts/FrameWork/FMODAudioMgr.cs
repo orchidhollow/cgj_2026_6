@@ -16,13 +16,10 @@ public class FMODAudioMgr : SingletonAutoMono<FMODAudioMgr>
 
     // ===== 一次性音效 =====
 
-    /// <summary>脚步声（参数 surface: snow/stone/ice）</summary>
-    public void PlayFootstep(string surface)
+    /// <summary>脚步声</summary>
+    public void PlayFootstep()
     {
-        var instance = RuntimeManager.CreateInstance("event:/player_footstep");
-        instance.setParameterByNameWithLabel("surface", surface);
-        instance.start();
-        instance.release();
+        RuntimeManager.PlayOneShot("event:/player_footstep");
     }
 
     /// <summary>激光发射锚</summary>
