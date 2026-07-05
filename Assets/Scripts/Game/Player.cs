@@ -72,6 +72,8 @@ public class Player : MonoBehaviour
     private bool isGrounded;
     /// <summary>标记是否已经触发死亡，防止重复调用</summary>
     private bool isDead;
+    /// <summary>脚步声计时器（限频播放）</summary>
+    private float footstepTimer;
 
     // 配置属性访问器，优先使用 config，否则使用直接字段
     private float MoveSpeed => config != null ? config.moveSpeed : moveSpeed;
@@ -199,6 +201,9 @@ public class Player : MonoBehaviour
 
             case PlayerState.BeingPulled:
                 // 物理由 Anchor 控制，此处暂停
+                // 更新风声速度参数（归一化到 0-1）
+                if (config != null && config.anchorPullSpeed > 0)
+                    FMODAudioMgr.Instance?.UpdateWindSpeed(rb.velocity.magnitude / config.anchorPullSpeed);
                 break;
 
             case PlayerState.Hit:
@@ -246,6 +251,17 @@ public class Player : MonoBehaviour
             ChangeState(PlayerState.Moving);
         else if (Mathf.Abs(h) < 0.1f && currentState == PlayerState.Moving)
             ChangeState(PlayerState.Idle);
+
+        // 移动时播放脚步声（限频，每 0.3 秒一次）
+        if (currentState == PlayerState.Moving && Mathf.Abs(h) > 0.1f)
+        {
+            footstepTimer -= Time.deltaTime;
+            if (footstepTimer <= 0f)
+            {
+                FMODAudioMgr.Instance?.PlayFootstep();
+                footstepTimer = 0.3f;
+            }
+        }
     }
 
     /// <summary>
@@ -304,7 +320,10 @@ public class Player : MonoBehaviour
     {
         // 下落中着地 → Idle
         if (currentState == PlayerState.Falling && isGrounded)
+        {
+            FMODAudioMgr.Instance?.PlayDown();
             ChangeState(PlayerState.Idle);
+        }
 
         // 跳跃中开始下降 → Falling（需要 targetPlanet 才能判断方向）
         if (currentState == PlayerState.Jumping && targetPlanet != null)
@@ -339,6 +358,7 @@ public class Player : MonoBehaviour
                 // 沿背离星球方向弹射
                 Vector2 up = -targetPlanet.GetGravityDirection(transform.position);
                 rb.AddForce(up * JumpForce, ForceMode2D.Impulse);
+                FMODAudioMgr.Instance?.PlayJump();
                 break;
 
             case PlayerState.AnchorFire:
@@ -348,6 +368,9 @@ public class Player : MonoBehaviour
 
             case PlayerState.BeingPulled:
                 // 不解绑星球，由 Planet trigger 管理父子关系
+                rb.velocity = Vector2.zero;
+                rb.isKinematic = true;  // 暂停物理，避免干扰 MoveTowards
+                FMODAudioMgr.Instance?.StartWind();
                 break;
 
             case PlayerState.Hit:
@@ -361,6 +384,7 @@ public class Player : MonoBehaviour
                 rb.bodyType = RigidbodyType2D.Static;
                 // 广播死亡事件
                 EventCenter.Instance?.EventTrigger(E_EventType.E_PlayerDeath, this);
+                FMODAudioMgr.Instance?.PlayDie();
                 break;
         }
 
@@ -418,7 +442,7 @@ public class Player : MonoBehaviour
     public void OnAnchorHanging()
     {
         // 悬挂状态：保持 BeingPulled 状态，等待点击左键释放
-        // 可以在这里播放悬挂动画或音效
+        FMODAudioMgr.Instance?.StopWind();
         Debug.Log("[Player] 进入悬挂状态，点击左键释放");
     }
 
@@ -432,12 +456,16 @@ public class Player : MonoBehaviour
     /// <summary>角色到达锚点位置时调用，根据是否着地切到 Idle 或 Falling</summary>
     public void OnAnchorArrived()
     {
+        rb.isKinematic = false;
+        FMODAudioMgr.Instance?.StopWind();
         ChangeState(isGrounded ? PlayerState.Idle : PlayerState.Falling);
     }
 
     /// <summary>锚点返回消失时调用，根据是否着地切到 Idle 或 Falling</summary>
     public void OnAnchorReturned()
     {
+        rb.isKinematic = false;
+        FMODAudioMgr.Instance?.StopWind();
         ChangeState(isGrounded ? PlayerState.Idle : PlayerState.Falling);
     }
 
@@ -496,6 +524,7 @@ public class Player : MonoBehaviour
         currentAnchor.Init(this, dir);
         isAnchorOut = true;
         ChangeState(PlayerState.AnchorFire);
+        FMODAudioMgr.Instance?.PlayThrow();
         EventCenter.Instance?.EventTrigger(E_EventType.E_AnchorFired, currentAnchor);
     }
 

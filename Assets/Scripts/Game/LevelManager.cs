@@ -50,6 +50,9 @@ public class LevelManager : MonoBehaviour
         SwitchToPlayerCamera();
         // 将 Player 初始化到起点
         InitPlayerToStart();
+        // 播放游戏配乐和环境音
+        FMODAudioMgr.Instance?.PlayBGMGame();
+        FMODAudioMgr.Instance?.PlayAmbience();
     }
 
     /// <summary>
