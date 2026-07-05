@@ -12,13 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 90b15fdf60462a94f9173f009dee4956, type: 3}
   m_Name: ControlConfig
   m_EditorClassIdentifier: 
-  moveSpeed: 5.5
-  jumpForce: 10
+  moveSpeed: 5
+  jumpForce: 14
   anchorFireDuration: 0.3
   hitDuration: 0.5
-  anchorSpeed: 35
-  anchorPullSpeed: 25
+  anchorSpeed: 20
+  anchorPullSpeed: 15
   anchorArriveDistance: 0.5
-  anchorMaxDistance: 15
-  anchorCollisionStartDistance: 1.5
+  anchorMaxDistance: 20
   hitchLayerName: Hitch

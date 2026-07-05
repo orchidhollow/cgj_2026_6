@@ -29,8 +29,6 @@ public class Anchor : MonoBehaviour
     public float chainWidth = 0.2f;
     /// <summary>锁链颜色</summary>
     public Color chainColor = Color.cyan;
-    /// <summary>激光起点偏移量（相对于玩家本地坐标）</summary>
-    public Vector3 chainStartOffset = Vector3.zero;
 
     private Rigidbody2D rb;
     /// <summary>发射此锚点的角色</summary>
@@ -84,7 +82,6 @@ public class Anchor : MonoBehaviour
         chainRenderer.material = laserMaterial;
         chainRenderer.startColor = chainColor;
         chainRenderer.endColor = chainColor;
-        chainRenderer.sortingOrder = 100;  // 渲染在最前面
         chainRenderer.enabled = false;
     }
 
@@ -102,13 +99,7 @@ public class Anchor : MonoBehaviour
             rb = GetComponent<Rigidbody2D>();
 
         rb.gravityScale = 0;
-        rb.freezeRotation = true;
         rb.velocity = direction.normalized * config.anchorSpeed;
-
-        // 旋转朝向发射方向
-        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg + 90f;
-        transform.rotation = Quaternion.Euler(0, 0, angle);
-
         GetComponent<CircleCollider2D>().isTrigger = true;
 
         // 重置所有状态
@@ -121,6 +112,9 @@ public class Anchor : MonoBehaviour
 
         // 激活激光
         chainRenderer.enabled = true;
+
+        // 通知 Player 开始投掷，触发 Throw 动画
+        owner?.OnAnchorStartThrow();
     }
 
     void Update()
@@ -128,7 +122,8 @@ public class Anchor : MonoBehaviour
         // 悬挂状态下点击左键释放
         if (isHanging && Input.GetMouseButtonDown(0))
         {
-            Release();
+            // 调用公共方法释放
+            StartRetract();
         }
 
         // 更新激光锁链：连接玩家和锚点
@@ -136,9 +131,10 @@ public class Anchor : MonoBehaviour
     }
 
     /// <summary>
-    /// 请求释放钩子（开始收线）
+    /// 公共接口：开始收回锚点（由 Player 调用）
+    /// 触发 Restore 动画
     /// </summary>
-    void Release()
+    public void StartRetract()
     {
         if (releasePending) return;
 
@@ -146,7 +142,8 @@ public class Anchor : MonoBehaviour
         isHanging = false;
         chainRenderer.enabled = true;  // 重新显示线（收线过程）
 
-        // 通知 Player 开始释放
+        // 通知 Player 开始收回，触发 Restore 动画
+        owner?.OnAnchorStartRetract();
         owner?.OnAnchorRelease();
     }
 
@@ -164,8 +161,8 @@ public class Anchor : MonoBehaviour
             return;
         }
 
-        // 起点：玩家位置 + 本地偏移
-        Vector2 startPos = owner.transform.position + owner.transform.TransformDirection(chainStartOffset);
+        // 起点：玩家位置
+        Vector2 startPos = owner.transform.position;
         // 终点：锚点位置
         Vector2 endPos = transform.position;
 
@@ -206,23 +203,26 @@ public class Anchor : MonoBehaviour
 
             // 广播命中事件
             EventCenter.Instance.EventTrigger(E_EventType.E_AnchorHit, this);
-            FMODAudioMgr.Instance?.PlayHit(true);
         }
         else
         {
             // 命中非 Hitch 层（Ground等），直接收回钩子
+            // 触发 Restore 动画
             StartReturn();
-            FMODAudioMgr.Instance?.PlayHit(false);
         }
     }
 
     /// <summary>
     /// 开始返回（钩子收回）
+    /// 触发 Restore 动画
     /// </summary>
     void StartReturn()
     {
         isReturning = true;
         rb.velocity = Vector2.zero;
+
+        // 通知 Player 开始收回，触发 Restore 动画
+        owner?.OnAnchorStartRetract();
     }
 
     void FixedUpdate()
@@ -251,6 +251,7 @@ public class Anchor : MonoBehaviour
             // 超过最大飞行距离，开始返回
             if (traveledDistance > config.anchorMaxDistance)
             {
+                // 触发 Restore 动画
                 StartReturn();
                 return;
             }
