@@ -7,11 +7,13 @@ Shader "Custom/LaserGlow"
     }
     SubShader
     {
-        Tags { "RenderType"="Transparent" "Queue"="Transparent" }
+        Tags { "RenderType"="Transparent" "Queue"="Transparent+100" }
         
         Pass
         {
             Blend One One
+            ZWrite Off
+            ZTest Always
             
             CGPROGRAM
             #pragma vertex vert
@@ -41,7 +43,7 @@ Shader "Custom/LaserGlow"
             
             fixed4 frag (v2f i) : SV_Target
             {
-                // ÏÞÖÆÑÕÉ«·¶Î§£¬·ÀÖ¹Òç³ö
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É«ï¿½ï¿½Î§ï¿½ï¿½ï¿½ï¿½Ö¹ï¿½ï¿½ï¿½
                 return saturate(_Color * _Intensity);
             }
             ENDCG

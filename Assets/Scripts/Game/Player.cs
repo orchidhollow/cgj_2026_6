@@ -258,10 +258,23 @@ public class Player : MonoBehaviour
             footstepTimer -= Time.deltaTime;
             if (footstepTimer <= 0f)
             {
-                FMODAudioMgr.Instance?.PlayFootstep();
+                FMODAudioMgr.Instance?.PlayFootstep(GetSurface());
                 footstepTimer = 0.3f;
             }
         }
+    }
+
+    /// <summary>
+    /// 根据当前父物体名称返回 FMOD surface 参数
+    /// 星球 → snow，小行星 → stone，星球（1）→ ice
+    /// </summary>
+    string GetSurface()
+    {
+        if (transform.parent == null) return "snow";
+        string parentName = transform.parent.name;
+        if (parentName.Contains("小行星")) return "stone";
+        if (parentName.Contains("1")) return "ice";
+        return "snow";
     }
 
     /// <summary>
@@ -413,21 +426,27 @@ public class Player : MonoBehaviour
         Collider2D col = GetComponent<Collider2D>();
         if (col != null) col.enabled = false;
 
-        // 确保 GameManager 存在
-        if (GameManager.Instance == null)
+        // 调用 LevelManager 处理死亡重置
+        if (LevelManager.Instance != null)
         {
-            Debug.LogWarning("[Player] GameManager.Instance 为 null，尝试查找场景中的 GameManager");
-            // 尝试通过 MonoBehaviour 方式查找（兼容旧版本）
-            GameManager gm = FindObjectOfType<GameManager>();
-            if (gm == null)
-            {
-                Debug.LogError("[Player] 场景中未找到 GameManager，无法处理死亡重开");
-                return;
-            }
+            LevelManager.Instance.HandlePlayerDeath(this);
         }
+    }
 
-        // 调用 GameManager 处理死亡和重开
-        GameManager.Instance.HandlePlayerDeath(this);
+    /// <summary>
+    /// 死亡后重置（由 LevelManager 调用）
+    /// 恢复状态、碰撞体、物理
+    /// </summary>
+    public void ResetAfterDeath()
+    {
+        isDead = false;
+        currentState = PlayerState.Idle;
+        rb.velocity = Vector2.zero;
+        rb.bodyType = RigidbodyType2D.Dynamic;
+        rb.isKinematic = false;
+
+        Collider2D col = GetComponent<Collider2D>();
+        if (col != null) col.enabled = true;
     }
 
     // ===== 外部调用接口（供 Anchor.cs 调用） =====

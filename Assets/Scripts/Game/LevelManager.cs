@@ -111,7 +111,22 @@ public class LevelManager : MonoBehaviour
     {
         Debug.Log("[LevelManager] 到达终点！关卡完成");
         GameManager.Instance.OnGameOver();
-        // TODO: 过关逻辑（加载下一关、播放动画等）
+    }
+
+    /// <summary>
+    /// 玩家死亡：将 Player 重置回起点位置
+    /// 由 Player.OnPlayerDie 调用
+    /// </summary>
+    public void HandlePlayerDeath(Player player)
+    {
+        if (player == null || startPoint == null) return;
+
+        // 重置玩家位置到起点
+        player.transform.position = startPoint.position;
+        player.transform.rotation = startPoint.rotation;
+
+        // 恢复玩家状态
+        player.ResetAfterDeath();
     }
 
     /// <summary>

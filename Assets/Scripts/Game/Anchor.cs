@@ -29,6 +29,8 @@ public class Anchor : MonoBehaviour
     public float chainWidth = 0.2f;
     /// <summary>锁链颜色</summary>
     public Color chainColor = Color.cyan;
+    /// <summary>激光起点偏移量（相对于玩家本地坐标）</summary>
+    public Vector3 chainStartOffset = Vector3.zero;
 
     private Rigidbody2D rb;
     /// <summary>发射此锚点的角色</summary>
@@ -82,6 +84,7 @@ public class Anchor : MonoBehaviour
         chainRenderer.material = laserMaterial;
         chainRenderer.startColor = chainColor;
         chainRenderer.endColor = chainColor;
+        chainRenderer.sortingOrder = 100;  // 渲染在最前面
         chainRenderer.enabled = false;
     }
 
@@ -99,7 +102,13 @@ public class Anchor : MonoBehaviour
             rb = GetComponent<Rigidbody2D>();
 
         rb.gravityScale = 0;
+        rb.freezeRotation = true;
         rb.velocity = direction.normalized * config.anchorSpeed;
+
+        // 旋转朝向发射方向
+        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg + 90f;
+        transform.rotation = Quaternion.Euler(0, 0, angle);
+
         GetComponent<CircleCollider2D>().isTrigger = true;
 
         // 重置所有状态
@@ -155,8 +164,8 @@ public class Anchor : MonoBehaviour
             return;
         }
 
-        // 起点：玩家位置
-        Vector2 startPos = owner.transform.position;
+        // 起点：玩家位置 + 本地偏移
+        Vector2 startPos = owner.transform.position + owner.transform.TransformDirection(chainStartOffset);
         // 终点：锚点位置
         Vector2 endPos = transform.position;
 

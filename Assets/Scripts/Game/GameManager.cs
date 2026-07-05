@@ -32,13 +32,6 @@ public class GameManager : MonoBehaviour
     /// <summary>开始界面场景名称</summary>
     public string menuSceneName = "GameStart";
 
-    [Header("死亡重开")]
-    /// <summary>死亡后重开延迟时间（秒）</summary>
-    public float restartDelay = 2f;
-
-    /// <summary>是否正在处理死亡重开</summary>
-    private bool isHandlingDeath = false;
-
     void Awake()
     {
         // 单例 + 跨场景保留
@@ -87,7 +80,6 @@ public class GameManager : MonoBehaviour
     public void StartGame()
     {
         Time.timeScale = 1f;
-        isHandlingDeath = false;
         FMODAudioMgr.Instance?.StopMusic();
         SceneManager.LoadScene(gameSceneName);
     }
@@ -108,25 +100,6 @@ public class GameManager : MonoBehaviour
     public void OnGameOver()
     {
         Time.timeScale = 1f;
-        isHandlingDeath = false;
         SceneManager.LoadScene(menuSceneName);
-    }
-
-    /// <summary>处理玩家死亡：延迟后重开当前场景</summary>
-    public void HandlePlayerDeath(Player player)
-    {
-        if (isHandlingDeath) return;
-        isHandlingDeath = true;
-        Time.timeScale = 0f;
-        StartCoroutine(RestartAfterDelay());
-    }
-
-    /// <summary>延迟重开协程</summary>
-    IEnumerator RestartAfterDelay()
-    {
-        yield return new WaitForSecondsRealtime(restartDelay);
-        isHandlingDeath = false;
-        Time.timeScale = 1f;
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }
