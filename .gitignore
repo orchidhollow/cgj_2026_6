@@ -68,3 +68,4 @@ crashlytics-build.properties
 /[Aa]ssets/Plugins/FMOD/Cache/
 /[Aa]ssets/Plugins/FMOD/platforms/
 fmod.log
+fmod_editor.log

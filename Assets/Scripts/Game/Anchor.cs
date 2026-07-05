@@ -197,11 +197,13 @@ public class Anchor : MonoBehaviour
 
             // 广播命中事件
             EventCenter.Instance.EventTrigger(E_EventType.E_AnchorHit, this);
+            FMODAudioMgr.Instance?.PlayHit(true);
         }
         else
         {
             // 命中非 Hitch 层（Ground等），直接收回钩子
             StartReturn();
+            FMODAudioMgr.Instance?.PlayHit(false);
         }
     }
 
