@@ -74,7 +74,7 @@ public class Planet : MonoBehaviour
     /// </summary>
     void OnTriggerEnter2D(Collider2D other)
     {
-        Debug.Log("Planet OnTriggerEnter2D");
+        Debug.Log($"小行星显示优先级为{LevelManager.Instance.planetCamera.Priority}");
         var p = other.GetComponent<Player>();
         if (p != null)
         {
@@ -96,6 +96,8 @@ public class Planet : MonoBehaviour
     /// </summary>
     void OnTriggerExit2D(Collider2D other)
     {
+        Debug.Log($"小行星显示优先级为{LevelManager.Instance.planetCamera.Priority}");
+
         if(LevelManager.Instance!=null)
             LevelManager.Instance.SwitchToPlayerCamera();
         // 离开时不清空重力，不做任何改变
