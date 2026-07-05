@@ -32,6 +32,8 @@ public class GameManager : MonoBehaviour
     /// <summary>开始界面场景名称</summary>
     public string menuSceneName = "GameStart";
 
+    public string overSceneName = "GameOver";
+
     void Awake()
     {
         // 单例 + 跨场景保留
@@ -100,6 +102,6 @@ public class GameManager : MonoBehaviour
     public void OnGameOver()
     {
         Time.timeScale = 1f;
-        SceneManager.LoadScene(menuSceneName);
+        SceneManager.LoadScene(overSceneName);
     }
 }
