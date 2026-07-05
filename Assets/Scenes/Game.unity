@@ -10899,8 +10899,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
-<<<<<<< Updated upstream
-=======
 --- !u!1 &855042902
 GameObject:
   m_ObjectHideFlags: 0
@@ -11019,7 +11017,6 @@ MonoBehaviour:
   m_CameraActivatedEvent:
     m_PersistentCalls:
       m_Calls: []
->>>>>>> Stashed changes
 --- !u!1 &875465665
 GameObject:
   m_ObjectHideFlags: 0
@@ -26798,17 +26795,14 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects:
-<<<<<<< Updated upstream
     - {fileID: 6127433549896601145, guid: e2ac7d5cfafc0154a832279e66ea07a4, type: 3}
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 6722688815121154782, guid: e2ac7d5cfafc0154a832279e66ea07a4, type: 3}
-=======
     - {fileID: 4907701983585905163, guid: e2ac7d5cfafc0154a832279e66ea07a4, type: 3}
     - {fileID: 6745395986279098585, guid: e2ac7d5cfafc0154a832279e66ea07a4, type: 3}
     m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 7662451448549644188, guid: e2ac7d5cfafc0154a832279e66ea07a4, type: 3}
->>>>>>> Stashed changes
       insertIndex: -1
       addedObject: {fileID: 277387633}
     m_AddedComponents: []
@@ -26823,8 +26817,5 @@ SceneRoots:
   - {fileID: 55158254}
   - {fileID: 769546198}
   - {fileID: 796455577}
-<<<<<<< Updated upstream
   - {fileID: 1688868645}
   - {fileID: 1458342087}
-=======
->>>>>>> Stashed changes
