@@ -72,7 +72,7 @@ public class LevelManager : MonoBehaviour
         //float currentSmoothAngle = Mathf.LerpAngle(PlayerCamera.m_Lens.Dutch,RotateAngle,Time.deltaTime * CameraRotateSpeed);
         //PlayerCamera.m_Lens.Dutch = Mathf.DeltaAngle(RotateAngle, currentSmoothAngle);
         
-        if(PlayerCameraSizeOut)
+        /*if(PlayerCameraSizeOut)
         {
             if(Mathf.Abs(PlayerCamera.m_Lens.OrthographicSize - targetSize) > 0.01f)
                 PlayerCamera.m_Lens.OrthographicSize = Mathf.Lerp(
@@ -83,9 +83,10 @@ public class LevelManager : MonoBehaviour
                 {
                     PlayerCamera.m_Lens.OrthographicSize = targetSize;
                     PlayerCameraSizeOut = false;
+                    PlayerCameraSizeIn = true;
                 }
         }
-        else if(PlayerCameraSizeIn)
+        if(PlayerCameraSizeIn)
         {
             if(Mathf.Abs(PlayerCamera.m_Lens.OrthographicSize - virtualCameraSize) > 0.01f)
                 PlayerCamera.m_Lens.OrthographicSize = Mathf.Lerp(
@@ -96,8 +97,11 @@ public class LevelManager : MonoBehaviour
             {
                 PlayerCamera.m_Lens.OrthographicSize = virtualCameraSize;
                 PlayerCameraSizeIn = false;
+                PlayerCameraSizeOut = true;
             }
         }
+        */
+        
     }
     /// <summary>
     /// 终点触发：Player 碰到终点时调用
@@ -149,6 +153,7 @@ public class LevelManager : MonoBehaviour
             }
             else
             {
+                planetCamera.Priority = 0;
                 Debug.Log("[LevelManager] 未找到小行星的 Transform，请确保在 Awake 中正确添加到 planetTransforms 字典中");
             }
         }
