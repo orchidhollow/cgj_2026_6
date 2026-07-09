@@ -85,6 +85,7 @@ public class Planet : MonoBehaviour
             if (LevelManager.Instance != null)
                 {
                     LevelManager.Instance.SwitchToWideCamera(gameObject.name);
+                    Debug.unityLogger.Log(gameObject.name);    
                 }
         }
     }
@@ -96,8 +97,13 @@ public class Planet : MonoBehaviour
     /// </summary>
     void OnTriggerExit2D(Collider2D other)
     {
-        if(LevelManager.Instance!=null)
-            LevelManager.Instance.SwitchToPlayerCamera();
-        // 离开时不清空重力，不做任何改变
+        var p = other.GetComponent<Player>();
+        if (p != null && p.targetPlanet == this)
+        {
+            // 取消父子关系，但保留 targetPlanet（重力源）
+            other.transform.SetParent(null, true);
+        }
+       // if (LevelManager.Instance != null)
+           // LevelManager.Instance.SwitchToPlayerCamera();
     }
 }

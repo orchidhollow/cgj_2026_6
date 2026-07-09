@@ -58,7 +58,7 @@ public class Player : MonoBehaviour
     [Header("朝向设置")]
     public bool autoFlip = true;
     [Tooltip("true=翻转SpriteRenderer.flipX, false=翻转Transform.localScale.x (推荐，可翻转整个动画)")]
-    public bool useSpriteFlip = false;
+    public bool useSpriteFlip = true;
     [Tooltip("当使用SpriteFlip时，是否反向（true:右面朝右时flipX=false）")]
     public bool flipXWhenFacingRight = false;
     [Tooltip("角色默认是否朝左（原始scale.x为负数）")]
@@ -299,12 +299,9 @@ public class Player : MonoBehaviour
 
     public void OnPlayerDie()
     {
-        if (currentState == PlayerState.Death || isDead) return;
-        isDead = true;
-        ChangeState(PlayerState.Death);
-        Collider2D col = GetComponent<Collider2D>();
-        if (col != null) col.enabled = false;
-        GameManager.Instance?.HandlePlayerDeath(this);
+        //使用level的结算失败
+        LevelManager.Instance.HandlePlayerDeath(this);
+        //GameManager.Instance?.HandlePlayerDeath(this);
     }
 
     // ===== 锚点回调接口 =====
@@ -374,6 +371,7 @@ public class Player : MonoBehaviour
     void FireAnchor()
     {
         if (isAnchorOut) return;
+        if (Time.timeScale <= 0f) return;
 
         if (currentAnchor == null)
         {
@@ -396,7 +394,7 @@ public class Player : MonoBehaviour
 
     void ReleaseAnchor()
     {
-        currentAnchor?.StartRetract();
+        currentAnchor?.StartReturn();
     }
 
     // ===== 动画更新 =====
@@ -442,35 +440,20 @@ public class Player : MonoBehaviour
         if (Mathf.Abs(h) < 0.1f) return;
 
         bool shouldFaceRight = h > 0;
-        if (shouldFaceRight == isFacingRight) return;
 
-        isFacingRight = shouldFaceRight;
-
+        // 直接设置翻转，不需要比较 isFacingRight
         if (useSpriteFlip)
         {
-            // 方式1：仅翻转 Sprite
             if (sprite != null)
             {
-                sprite.flipX = flipXWhenFacingRight ? !isFacingRight : isFacingRight;
+                sprite.flipX = flipXWhenFacingRight ? !shouldFaceRight : shouldFaceRight;
             }
         }
         else
         {
-            // 方式2：翻转 Transform.localScale.x（真正翻转整个动画方向）
+            // 方式2：翻转 Transform.localScale.x
             Vector3 scale = originalScale;
-
-            // 【修正】根据默认朝向决定翻转逻辑
-            if (defaultFacingLeft)
-            {
-                // 默认朝左：右移时 scale.x 应为正数（朝右），左移时保持负数（朝左）
-                scale.x = isFacingRight ? Mathf.Abs(scale.x) : -Mathf.Abs(scale.x);
-            }
-            else
-            {
-                // 默认朝右：右移时 scale.x 应为正数，左移时为负数
-                scale.x = isFacingRight ? Mathf.Abs(scale.x) : -Mathf.Abs(scale.x);
-            }
-
+            scale.x = shouldFaceRight ? Mathf.Abs(scale.x) : -Mathf.Abs(scale.x);
             transform.localScale = scale;
         }
     }
